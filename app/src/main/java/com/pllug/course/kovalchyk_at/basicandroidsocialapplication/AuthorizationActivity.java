@@ -2,23 +2,22 @@ package com.pllug.course.kovalchyk_at.basicandroidsocialapplication;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.support.annotation.NonNull;
-import android.support.design.widget.Snackbar;
-import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
-
 import android.content.CursorLoader;
+import android.content.Intent;
 import android.content.Loader;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
-
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
+import android.support.annotation.NonNull;
+import android.support.design.widget.Snackbar;
+import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
@@ -31,7 +30,9 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static android.Manifest.permission.READ_CONTACTS;
 
@@ -49,9 +50,14 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
      * A dummy authentication store containing known user names and passwords.
      * TODO: remove after connecting to a real authentication system.
      */
-    private static final String[] DUMMY_CREDENTIALS = new String[]{
-            "foo@example.com:hello", "bar@example.com:world"
-    };
+    /**
+     * private static final String[] DUMMY_CREDENTIALS = new String[]{
+     * "foo@example.com:hello", "bar@example.com:world"
+     * };
+     */
+    private ArrayList<String> DUMMY_CREDENTIALS_LIST = new ArrayList<>(Arrays.asList("foo@example.com:Hello1", "bar@example.com:world"));
+    private Pattern EMAILS_REGEX = Pattern.compile("^[A-Za-z0-9+]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z]+(\\.[A-Za-z]+)*(\\.[A-Za-z]{2,})$");
+    private ArrayList<Pattern> PASSWORD_REGEX = new ArrayList<>(Arrays.asList(Pattern.compile("(.*)[A-Z](.*)"), Pattern.compile("(.*)[a-z](.*)"), Pattern.compile("(.*)[0-9](.*)"), Pattern.compile("(.*){5,}")));
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
@@ -62,6 +68,7 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
+    private Intent openIntent;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,7 +90,7 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
             }
         });
 
-        Button mEmailSignInButton = (Button) findViewById(R.id.email_sign_in_button);
+        Button mEmailSignInButton = findViewById(R.id.email_sign_in_button);
         mEmailSignInButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -172,6 +179,10 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
             mEmailView.setError(getString(R.string.error_field_required));
             focusView = mEmailView;
             cancel = true;
+        } else if (TextUtils.isEmpty(password)) {
+            mPasswordView.setError(getString(R.string.error_field_required));
+            focusView = mPasswordView;
+            cancel = true;
         } else if (!isEmailValid(email)) {
             mEmailView.setError(getString(R.string.error_invalid_email));
             focusView = mEmailView;
@@ -192,13 +203,14 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
     }
 
     private boolean isEmailValid(String email) {
-        //TODO: Replace this with your own logic
-        return email.contains("@");
+        return EMAILS_REGEX.matcher(email).matches();
     }
 
     private boolean isPasswordValid(String password) {
-        //TODO: Replace this with your own logic
-        return password.length() > 4;
+        return PASSWORD_REGEX.get(0).matcher(password).matches()
+                && PASSWORD_REGEX.get(1).matcher(password).matches()
+                && PASSWORD_REGEX.get(2).matcher(password).matches()
+                && PASSWORD_REGEX.get(3).matcher(password).matches();
     }
 
     /**
@@ -209,32 +221,25 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
         // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
         // for very easy animations. If available, use these APIs to fade-in
         // the progress spinner.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB_MR2) {
-            int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
+        int shortAnimTime = getResources().getInteger(android.R.integer.config_shortAnimTime);
 
-            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-            mLoginFormView.animate().setDuration(shortAnimTime).alpha(
-                    show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-                }
-            });
+        mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+        mLoginFormView.animate().setDuration(shortAnimTime).alpha(
+                show ? 0 : 1).setListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
+            }
+        });
 
-            mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-            mProgressView.animate().setDuration(shortAnimTime).alpha(
-                    show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-                }
-            });
-        } else {
-            // The ViewPropertyAnimator APIs are not available, so simply show
-            // and hide the relevant UI components.
-            mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
-            mLoginFormView.setVisibility(show ? View.GONE : View.VISIBLE);
-        }
+        mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
+        mProgressView.animate().setDuration(shortAnimTime).alpha(
+                show ? 1 : 0).setListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                mProgressView.setVisibility(show ? View.VISIBLE : View.GONE);
+            }
+        });
     }
 
     @Override
@@ -291,10 +296,12 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
         int IS_PRIMARY = 1;
     }
 
+
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
      */
+    @SuppressLint("StaticFieldLeak")
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
 
         private final String mEmail;
@@ -303,29 +310,36 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
         UserLoginTask(String email, String password) {
             mEmail = email;
             mPassword = password;
+
         }
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            // TODO: attempt authentication against a network service.
+            Boolean res = false;
+            // TODO: attempt authentication.
 
             try {
+                for (String credential : DUMMY_CREDENTIALS_LIST) {
+                    String[] pieces = credential.split(":", 2);
+                    if (pieces[0].equals(mEmail)) {  // Account exists, return true if the password matches.
+                        if (pieces[1].equals(mPassword)) {
+                            res = true;
+                            break;
+                        }
+                    }
+                }
                 // Simulate network access.
                 Thread.sleep(2000);
             } catch (InterruptedException e) {
-                return false;
+                return res;
+            }
+            if (res) {
+                return true;
+            } else {
+                DUMMY_CREDENTIALS_LIST.add(mEmail + ":" + mPassword);
+                return true;
             }
 
-            for (String credential : DUMMY_CREDENTIALS) {
-                String[] pieces = credential.split(":");
-                if (pieces[0].equals(mEmail)) {
-                    // Account exists, return true if the password matches.
-                    return pieces[1].equals(mPassword);
-                }
-            }
-
-            // TODO: register the new account here.
-            return true;
         }
 
         @Override
@@ -334,7 +348,9 @@ public class AuthorizationActivity extends AppCompatActivity implements LoaderCa
             showProgress(false);
 
             if (success) {
-                //finish();
+               // finish();
+                openIntent = new Intent(getApplicationContext(), MainActivity.class).putExtra("UserEmail",mEmail).putExtra("UserPassword", mPassword);
+                startActivity(openIntent);
             } else {
                 mPasswordView.setError(getString(R.string.error_incorrect_password));
                 mPasswordView.requestFocus();
